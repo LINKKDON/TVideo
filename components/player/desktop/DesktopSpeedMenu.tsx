@@ -51,13 +51,27 @@ export function DesktopSpeedMenu({
     const calculateMenuPosition = React.useCallback(() => {
         if (!buttonRef.current || !containerRef.current) return;
 
-        const buttonRect = buttonRef.current.getBoundingClientRect();
-        const containerRect = containerRef.current.getBoundingClientRect();
-        const viewportHeight = window.innerHeight;
+        if (!buttonRef.current || !containerRef.current) return;
 
-        // Space available below and above the button
-        const spaceBelow = viewportHeight - buttonRect.bottom - 20; // 20px margin
-        const spaceAbove = buttonRect.top - containerRect.top - 20;
+        // Calculate position relative to container using offsetParent loop
+        // This works regardless of container rotation because we stay in the local coordinate system
+        let top = 0;
+        let left = 0;
+        let el: HTMLElement | null = buttonRef.current;
+
+        while (el && el !== containerRef.current) {
+            top += el.offsetTop;
+            left += el.offsetLeft;
+            el = el.offsetParent as HTMLElement;
+        }
+
+        const buttonHeight = buttonRef.current.offsetHeight;
+        const buttonWidth = buttonRef.current.offsetWidth;
+        const containerHeight = containerRef.current.offsetHeight;
+
+        // Use container dimensions for available space
+        const spaceBelow = containerHeight - (top + buttonHeight) - 20;
+        const spaceAbove = top - 20;
 
         // Estimate menu height (or use actual if already rendered)
         const estimatedMenuHeight = 250; // approximate height of speed menu
@@ -69,36 +83,31 @@ export function DesktopSpeedMenu({
         // Calculate max-height based on available space
         const maxHeight = openUpward
             ? Math.min(spaceAbove, actualMenuHeight)
-            : Math.min(spaceBelow, viewportHeight * 0.7);
+            : Math.min(spaceBelow, containerHeight * 0.7);
 
         if (openUpward) {
             setMenuPosition({
-                top: buttonRect.top - containerRect.top - 10, // Position above button
-                left: buttonRect.right - containerRect.left,
+                top: top - 10,
+                left: left + buttonWidth, // Right align? No, original was left: buttonRect.right - containerRect.left
+                // Original logic: left = buttonRect.right - containerRect.left. 
+                // In local coords, buttonRect.right = left + buttonWidth.
+                // But we want to align the RIGHT edge of menu with RIGHT edge of button?
+                // CSS uses `transform: translateX(-100%)` and `left: ${menuPos.left}`.
+                // So left should be the right edge of the button.
                 maxHeight: `${maxHeight}px`,
                 openUpward: true
             });
         } else {
             setMenuPosition({
-                top: buttonRect.bottom - containerRect.top + 10,
-                left: buttonRect.right - containerRect.left,
+                top: top + buttonHeight + 10,
+                left: left + buttonWidth,
                 maxHeight: `${maxHeight}px`,
                 openUpward: false
             });
         }
     }, [containerRef]);
 
-    // When rotated, use direct viewport positioning
-    const calculateRotatedPosition = React.useCallback(() => {
-        if (!buttonRef.current) return;
-        const buttonRect = buttonRef.current.getBoundingClientRect();
-        setMenuPosition({
-            top: buttonRect.bottom + 10,
-            left: buttonRect.right,
-            maxHeight: `${window.innerHeight * 0.6}px`,
-            openUpward: false
-        });
-    }, []);
+
 
     // Auto-close menu on scroll
     React.useEffect(() => {
@@ -114,29 +123,15 @@ export function DesktopSpeedMenu({
 
     React.useEffect(() => {
         if (showSpeedMenu) {
-            if (isRotated) {
-                calculateRotatedPosition();
-            } else {
-                calculateMenuPosition();
-            }
-            const timer = setTimeout(() => {
-                if (isRotated) {
-                    calculateRotatedPosition();
-                } else {
-                    calculateMenuPosition();
-                }
-            }, 50);
+            calculateMenuPosition();
+            const timer = setTimeout(calculateMenuPosition, 50);
             return () => clearTimeout(timer);
         }
-    }, [showSpeedMenu, calculateMenuPosition, calculateRotatedPosition, isRotated]);
+    }, [showSpeedMenu, calculateMenuPosition]);
 
     const handleToggle = () => {
         if (!showSpeedMenu) {
-            if (isRotated) {
-                calculateRotatedPosition();
-            } else {
-                calculateMenuPosition();
-            }
+            calculateMenuPosition();
         }
         onToggleSpeedMenu();
     };
@@ -144,10 +139,10 @@ export function DesktopSpeedMenu({
     const MenuContent = (
         <div
             ref={menuRef}
-            className={`${isRotated ? 'fixed' : 'absolute'} z-[2147483647] bg-[var(--glass-bg)] backdrop-blur-[25px] saturate-[180%] rounded-[var(--radius-2xl)] border border-[var(--glass-border)] shadow-[var(--shadow-md)] p-1 sm:p-1.5 w-fit min-w-[3.5rem] sm:min-w-[4.5rem] animate-in fade-in zoom-in-95 duration-200 overflow-y-auto`}
+            className={`absolute z-[50] bg-[var(--glass-bg)] backdrop-blur-[25px] saturate-[180%] rounded-[var(--radius-2xl)] border border-[var(--glass-border)] shadow-[var(--shadow-md)] p-1 sm:p-1.5 w-fit min-w-[3.5rem] sm:min-w-[4.5rem] animate-in fade-in zoom-in-95 duration-200 overflow-y-auto`}
             style={{
-                top: isRotated ? `${menuPosition.top}px` : (menuPosition.openUpward ? 'auto' : `${menuPosition.top}px`),
-                bottom: (!isRotated && menuPosition.openUpward) ? `calc(100% - ${menuPosition.top}px + 10px)` : 'auto',
+                top: menuPosition.openUpward ? 'auto' : `${menuPosition.top}px`,
+                bottom: menuPosition.openUpward ? `calc(100% - ${menuPosition.top}px + 10px)` : 'auto',
                 left: `${menuPosition.left}px`,
                 transform: 'translateX(-100%)',
                 maxHeight: menuPosition.maxHeight,
@@ -185,8 +180,21 @@ export function DesktopSpeedMenu({
                 {playbackRate}x
             </button>
 
-            {/* Speed Menu (Portal) */}
-            {showSpeedMenu && typeof document !== 'undefined' && createPortal(MenuContent, isRotated ? document.body : (containerRef.current || document.body))}
+            {/* Speed Menu (Portal) - Portal to container to inherit rotation but avoid overflow clipping if container has it? 
+                Actually, the container usually has overflow-hidden.
+                If we portal to containerRef, it is inside the container div.
+                If the container div has overflow-hidden, the menu will be clipped.
+                BUT DesktopVideoPlayer structure:
+                <div ref={containerRef} ...> (relative, no overflow hidden?)
+                  <div className="absolute inset-0 overflow-hidden ..."> (video wrapper)
+                  <DesktopOverlayWrapper ...>
+                So containerRef itself (outer wrapper) seems to NOT have overflow-hidden in my memory?
+                Checking DesktopVideoPlayer.tsx:
+                className={`kvideo-container relative aspect-video ...`}
+                It does NOT have overflow-hidden. The inner div does.
+                So portaling to containerRef is SAFE and CORRECT.
+            */}
+            {showSpeedMenu && containerRef.current && createPortal(MenuContent, containerRef.current)}
         </div>
     );
 }

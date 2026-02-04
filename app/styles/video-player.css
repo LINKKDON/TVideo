@@ -57,10 +57,11 @@
 .slider-track::before {
     content: '';
     position: absolute;
-    top: -16px;
+    top: -20px;
     left: 0;
     right: 0;
-    bottom: -16px;
+    bottom: -5px;
+    /* Reduced from -16px to avoid covering buttons below */
     z-index: 1;
 }
 

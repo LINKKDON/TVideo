@@ -84,13 +84,26 @@ export function DesktopMoreMenu({
     const calculateMenuPosition = React.useCallback(() => {
         if (!buttonRef.current || !containerRef.current) return;
 
-        const buttonRect = buttonRef.current.getBoundingClientRect();
-        const containerRect = containerRef.current.getBoundingClientRect();
-        const viewportHeight = window.innerHeight;
+        if (!buttonRef.current || !containerRef.current) return;
 
-        // Space available below and above the button
-        const spaceBelow = viewportHeight - buttonRect.bottom - 20; // 20px margin
-        const spaceAbove = buttonRect.top - containerRect.top - 20;
+        // Calculate position relative to container using offsetParent loop
+        let top = 0;
+        let left = 0;
+        let el: HTMLElement | null = buttonRef.current;
+
+        while (el && el !== containerRef.current) {
+            top += el.offsetTop;
+            left += el.offsetLeft;
+            el = el.offsetParent as HTMLElement;
+        }
+
+        const buttonHeight = buttonRef.current.offsetHeight;
+        const buttonWidth = buttonRef.current.offsetWidth;
+        const containerHeight = containerRef.current.offsetHeight;
+
+        // Use container dimensions for available space
+        const spaceBelow = containerHeight - (top + buttonHeight) - 20;
+        const spaceAbove = top - 20;
 
         // Estimate menu height (or use actual if already rendered)
         const estimatedMenuHeight = 450; // approximate height of menu
@@ -102,36 +115,26 @@ export function DesktopMoreMenu({
         // Calculate max-height based on available space
         const maxHeight = openUpward
             ? Math.min(spaceAbove, actualMenuHeight)
-            : Math.min(spaceBelow, viewportHeight * 0.7);
+            : Math.min(spaceBelow, containerHeight * 0.7);
 
         if (openUpward) {
             setMenuPosition({
-                top: buttonRect.top - containerRect.top - 10, // Position above button
-                left: buttonRect.left - containerRect.left,
+                top: top - 10,
+                left: left,
                 maxHeight: `${maxHeight}px`,
                 openUpward: true
             });
         } else {
             setMenuPosition({
-                top: buttonRect.bottom - containerRect.top + 10,
-                left: buttonRect.left - containerRect.left,
+                top: top + buttonHeight + 10,
+                left: left,
                 maxHeight: `${maxHeight}px`,
                 openUpward: false
             });
         }
     }, [containerRef]);
 
-    // When rotated, use direct viewport positioning
-    const calculateRotatedPosition = React.useCallback(() => {
-        if (!buttonRef.current) return;
-        const buttonRect = buttonRef.current.getBoundingClientRect();
-        setMenuPosition({
-            top: buttonRect.bottom + 10,
-            left: buttonRect.left,
-            maxHeight: `${window.innerHeight * 0.6}px`,
-            openUpward: false
-        });
-    }, []);
+
 
     // Auto-close menu on scroll
     React.useEffect(() => {
@@ -147,29 +150,15 @@ export function DesktopMoreMenu({
 
     React.useEffect(() => {
         if (showMoreMenu) {
-            if (isRotated) {
-                calculateRotatedPosition();
-            } else {
-                calculateMenuPosition();
-            }
-            const timer = setTimeout(() => {
-                if (isRotated) {
-                    calculateRotatedPosition();
-                } else {
-                    calculateMenuPosition();
-                }
-            }, 50);
+            calculateMenuPosition();
+            const timer = setTimeout(calculateMenuPosition, 50);
             return () => clearTimeout(timer);
         }
-    }, [showMoreMenu, calculateMenuPosition, calculateRotatedPosition, isRotated]);
+    }, [showMoreMenu, calculateMenuPosition]);
 
     const handleToggle = () => {
         if (!showMoreMenu) {
-            if (isRotated) {
-                calculateRotatedPosition();
-            } else {
-                calculateMenuPosition();
-            }
+            calculateMenuPosition();
         }
         onToggleMoreMenu();
     };
@@ -177,10 +166,10 @@ export function DesktopMoreMenu({
     const MenuContent = (
         <div
             ref={menuRef}
-            className={`${isRotated ? 'fixed' : 'absolute'} z-[2147483647] bg-[var(--glass-bg)] backdrop-blur-[25px] saturate-[180%] rounded-[var(--radius-2xl)] border border-[var(--glass-border)] shadow-[var(--shadow-md)] p-1.5 sm:p-2 w-fit min-w-[200px] sm:min-w-[240px] animate-in fade-in zoom-in-95 duration-200 overflow-y-auto`}
+            className={`absolute z-[50] bg-[var(--glass-bg)] backdrop-blur-[25px] saturate-[180%] rounded-[var(--radius-2xl)] border border-[var(--glass-border)] shadow-[var(--shadow-md)] p-1.5 sm:p-2 w-fit min-w-[200px] sm:min-w-[240px] animate-in fade-in zoom-in-95 duration-200 overflow-y-auto`}
             style={{
-                top: isRotated ? `${menuPosition.top}px` : (menuPosition.openUpward ? 'auto' : `${menuPosition.top}px`),
-                bottom: (!isRotated && menuPosition.openUpward) ? `calc(100% - ${menuPosition.top}px + 10px)` : 'auto',
+                top: menuPosition.openUpward ? 'auto' : `${menuPosition.top}px`,
+                bottom: menuPosition.openUpward ? `calc(100% - ${menuPosition.top}px + 10px)` : 'auto',
                 left: `${menuPosition.left}px`,
                 maxHeight: menuPosition.maxHeight,
             }}
@@ -420,7 +409,7 @@ export function DesktopMoreMenu({
             </button>
 
             {/* More Menu Dropdown (Portal) */}
-            {showMoreMenu && typeof document !== 'undefined' && createPortal(MenuContent, isRotated ? document.body : (containerRef.current || document.body))}
+            {showMoreMenu && containerRef.current && createPortal(MenuContent, containerRef.current)}
         </div>
     );
 }
