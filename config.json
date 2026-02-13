@@ -1,0 +1,58 @@
+[
+  {
+    "id": "AQY",
+    "name": "🎬-爱奇艺-",
+    "baseUrl": "https://iqiyizyapi.com/api.php/provide/vod",
+    "group": "normal",
+    "enabled": true
+  },
+  {
+    "id": "dbzy",
+    "name": "🎬豆瓣资源",
+    "baseUrl": "https://caiji.dbzy5.com/api.php/provide/vod",
+    "group": "normal",
+    "enabled": true
+  },
+  {
+    "id": "dytt",
+    "name": "🎬电影天堂",
+    "baseUrl": "http://caiji.dyttzyapi.com/api.php/provide/vod",
+    "group": "normal",
+    "enabled": true
+  },
+  {
+    "id": "lzzy",
+    "name": "🎬量子资源",
+    "baseUrl": "https://cj.lzcaiji.com/api.php/provide/vod",
+    "group": "normal",
+    "enabled": true
+  },
+  {
+    "id": "360zy",
+    "name": "🎬360 资源",
+    "baseUrl": "https://360zy.com/api.php/provide/vod",
+    "group": "normal",
+    "enabled": true
+  },
+  {
+    "id": "ryzy",
+    "name": "🎬如意资源",
+    "baseUrl": "https://cj.rycjapi.com/api.php/provide/vod",
+    "group": "normal",
+    "enabled": true
+  },
+  {
+    "id": "tyzy",
+    "name": "🎬天涯影视",
+    "baseUrl": "https://tyyszy.com/api.php/provide/vod",
+    "group": "normal",
+    "enabled": true
+  },
+  {
+    "id": "jkun",
+    "name": "🔞jkun资源",
+    "baseUrl": "https://jkunzyapi.com/api.php/provide/vod",
+    "group": "premium",
+    "enabled": true
+  }
+]
