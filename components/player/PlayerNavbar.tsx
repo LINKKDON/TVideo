@@ -3,11 +3,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/Button';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
+import { useSiteIcon } from '@/components/SiteIconProvider';
 import { Icons } from '@/components/ui/Icon';
-import { siteConfig, SITE_ICON_PATH } from '@/lib/config/site-config';
+import { siteConfig } from '@/lib/config/site-config';
 
 export function PlayerNavbar({ isPremium }: { isPremium?: boolean }) {
     const router = useRouter();
+    const siteIconSrc = useSiteIcon();
 
     return (
         <nav className="sticky top-0 z-50 pt-4 pb-2 px-4" style={{ transform: 'translateZ(0)' }}>
@@ -20,7 +22,7 @@ export function PlayerNavbar({ isPremium }: { isPremium?: boolean }) {
                             title={isPremium ? "返回高级主页" : "返回首页"}
                         >
                             <Image
-                                src={SITE_ICON_PATH}
+                                src={siteIconSrc}
                                 alt={siteConfig.name}
                                 width={40}
                                 height={40}

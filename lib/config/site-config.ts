@@ -9,8 +9,6 @@ export interface SiteConfig {
   name: string;
 }
 
-export const SITE_ICON_PATH = "/api/site-icon";
-
 /**
  * Site configuration object
  * Uses environment variables with fallback to default values
